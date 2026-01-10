@@ -1,9 +1,31 @@
 import os
 import json
-import requests
 from googleapiclient.discovery import build
+from google.oauth2 import service_account
 from youtube_transcript_api import YouTubeTranscriptApi
 from openai import OpenAI
+
+class DynamicCriteriaReader:
+    def __init__(self, sheet_id, credentials_path):
+        self.sheet_id = sheet_id
+        self.creds = service_account.Credentials.from_service_account_file(
+            credentials_path, 
+            scopes=['https://www.googleapis.com/auth/spreadsheets.readonly']
+         )
+        self.service = build('sheets', 'v4', credentials=self.creds)
+
+    def read_settings_tab(self):
+        range_name = 'Settings!A:B'
+        result = self.service.spreadsheets().values().get(
+            spreadsheetId=self.sheet_id, range=range_name).execute()
+        return result.get('values', [])
+
+    def parse_criteria(self, rows):
+        criteria = {}
+        for row in rows:
+            if len(row) >= 2:
+                criteria[row[0]] = row[1]
+        return criteria
 
 class MultiSourceScraper:
     def __init__(self, criteria):
@@ -18,7 +40,6 @@ class MultiSourceScraper:
             return None
 
     def extract_full_details(self, text, title, source="YouTube"):
-        # This prompt is mapped exactly to your 17 columns
         prompt = f"""
         Analyze this {source} content for a trading strategy.
         Extract data for these specific columns:
@@ -44,9 +65,9 @@ class MultiSourceScraper:
     def scrape_youtube(self, api_key):
         youtube = build('youtube', 'v3', developerKey=api_key)
         results = []
-        keywords = self.criteria.get('keywords', 'trading strategy')
+        keywords = self.criteria.get('YouTube Keywords', 'trading strategy')
         for query in keywords.split(','):
-            request = youtube.search().list(q=query.strip(), part='snippet', maxResults=3, type='video')
+            request = youtube.search().list(q=query.strip(), part='snippet', maxResults=2, type='video')
             response = request.execute()
             for item in response['items']:
                 video_id = item['id']['videoId']
@@ -56,25 +77,13 @@ class MultiSourceScraper:
                     if details:
                         details['link'] = f"https://youtube.com/watch?v={video_id}"
                         details['date'] = item['snippet']['publishedAt']
+                        details['channel'] = item['snippet']['channelTitle']
                         results.append(details )
         return results
-
-    def scrape_option_alpha(self):
-        # Placeholder for Option Alpha API or Web Scraping logic
-        print("Scraping Option Alpha...")
-        return []
-
-    def scrape_quantconnect(self):
-        # Placeholder for QuantConnect League scraping logic
-        print("Scraping QuantConnect League...")
-        return []
 
     def run_all(self, youtube_api_key):
         all_results = []
         if self.criteria.get('YouTube Enabled') == 'Y':
             all_results.extend(self.scrape_youtube(youtube_api_key))
-        if self.criteria.get('Option Alpha Enabled') == 'Y':
-            all_results.extend(self.scrape_option_alpha())
-        if self.criteria.get('QuantConnect Enabled') == 'Y':
-            all_results.extend(self.scrape_quantconnect())
+        # Option Alpha and QuantConnect logic can be added here later
         return all_results
