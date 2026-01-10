@@ -35,30 +35,34 @@ class MultiSourceScraper:
     def get_transcript(self, video_id):
         try:
             transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
-            return " ".join([t['text'] for t in transcript_list])
+            text = " ".join([t['text'] for t in transcript_list])
+            print(f"DEBUG: Successfully got transcript for {video_id} ({len(text)} chars)")
+            return text
         except Exception as e:
             print(f"DEBUG: Transcript error for {video_id}: {e}")
             return None
 
     def extract_full_details(self, transcript, title):
         prompt = f"""
-        You are an expert Quant Trader. Analyze this YouTube transcript for a trading strategy.
-        GOAL: Determine if this is a high-quality, profitable trading strategy.
-        EXTRACT: Strategy Name, Market Regime, Entry Rules, Exit Rules, Win Rate (%), CAGR (%), Max Drawdown (%), Sharpe Ratio.
+        Analyze this YouTube transcript for a trading strategy.
         Title: {title}
         Transcript: {transcript[:7000]}
-        Return ONLY a JSON object with keys: name, regime, entry, exit, win, cagr, drawdown, sharpe, quality_score, description.
+        
+        Return a JSON object with: name, regime, entry, exit, win, cagr, drawdown, sharpe, quality_score, description.
+        If a value is unknown, use "Not mentioned".
         """
         try:
             response = self.client.chat.completions.create(
                 model="gpt-4o-mini",
-                messages=[{"role": "system", "content": "You are a professional trading strategy analyst."},
+                messages=[{"role": "system", "content": "You are a professional trading analyst. Always return JSON."},
                           {"role": "user", "content": prompt}],
                 response_format={ "type": "json_object" }
             )
-            return json.loads(response.choices[0].message.content)
+            data = json.loads(response.choices[0].message.content)
+            print(f"DEBUG: AI Analysis for '{title}': {data}")
+            return data
         except Exception as e:
-            print(f"DEBUG: AI Error: {e}")
+            print(f"DEBUG: AI Error for '{title}': {e}")
             return None
 
     def scrape_youtube(self, api_key):
@@ -67,27 +71,30 @@ class MultiSourceScraper:
         keywords = self.criteria.get('YouTube Keywords', 'trading strategy')
         
         for query in keywords.split(','):
-            print(f"DEBUG: Searching for {query.strip()}")
-            request = youtube.search().list(q=query.strip(), part='snippet', maxResults=2, type='video')
+            clean_query = query.strip()
+            print(f"DEBUG: Searching YouTube for: '{clean_query}'")
+            request = youtube.search().list(q=clean_query, part='snippet', maxResults=3, type='video')
             response = request.execute()
+            
+            print(f"DEBUG: Found {len(response.get('items', []))} videos for query '{clean_query}'")
             
             for item in response['items']:
                 video_id = item['id']['videoId']
                 title = item['snippet']['title']
-                print(f"DEBUG: Processing {title}")
                 
                 transcript = self.get_transcript(video_id)
-                if not transcript: continue
+                if not transcript:
+                    continue
                 
                 details = self.extract_full_details(transcript, title)
                 if details:
-                    print(f"DEBUG: AI Found: {details.get('name')}")
                     details['link'] = f"https://youtube.com/watch?v={video_id}"
                     details['date'] = item['snippet']['publishedAt']
                     details['channel'] = item['snippet']['channelTitle']
                     results.append(details )
+        
+        print(f"DEBUG: Total strategies found across all queries: {len(results)}")
         return results
 
     def run_all(self, youtube_api_key):
         return self.scrape_youtube(youtube_api_key)
-
