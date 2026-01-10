@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 from flask import Flask, request, jsonify
 import os
-from multi_source_scraper_dynamic import MultiSourceScraper  # only this import needed now
+import traceback
+from multi_source_scraper_dynamic import MultiSourceScraper  # Only import the scraper class
 
 app = Flask(__name__)
 
@@ -22,11 +23,12 @@ def scrape():
         if not youtube_api_key:
             return jsonify({'status': 'error', 'message': 'youtube_api_key is required'}), 400
 
+        # Debug prints to confirm data arrives correctly
         print("DEBUG: Received criteria keys:", list(criteria.keys()))
-        print("DEBUG: YouTube Enabled:", criteria.get('YouTube Enabled'))
-        print("DEBUG: Keywords preview:", criteria.get('Keywords', '')[:100])
+        print("DEBUG: Min CAGR (%):", criteria.get("Min CAGR (%)"))
+        print("DEBUG: Keywords preview:", criteria.get("Keywords", "")[:150])
 
-        # Instantiate and run the scraper with the received criteria
+        # Create the scraper with the criteria received from n8n
         scraper = MultiSourceScraper(criteria)
         results = scraper.run_all(youtube_api_key)
 
@@ -37,13 +39,12 @@ def scrape():
         })
 
     except Exception as e:
-        import traceback
         error_msg = traceback.format_exc()
         print("CRITICAL ERROR in /scrape:", error_msg)
         return jsonify({
             'status': 'error',
             'message': str(e),
-            'traceback': error_msg  # only for dev; remove in production if security concern
+            'traceback': error_msg  # For debugging; remove in production
         }), 500
 
 if __name__ == '__main__':
