@@ -13,7 +13,15 @@ app = Flask(__name__)
 class MultiSourceScraper:
     def __init__(self, criteria):
         self.criteria = criteria
-        self.client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+        from openai import OpenAI
+
+# Modern initialization (works with openai >=1.0)
+self.client = OpenAI(
+    api_key=os.environ.get("OPENAI_API_KEY"),
+    # If you really need proxies (e.g., for Render or VPN), use this instead:
+    # http_client=httpx.Client(proxies=os.environ.get("HTTP_PROXY"))
+    # But usually NOT needed — comment out unless you have proxy issues
+)
 
     def get_transcript(self, video_id):
         try:
