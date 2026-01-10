@@ -11,7 +11,7 @@ class DynamicCriteriaReader:
         self.creds = service_account.Credentials.from_service_account_file(
             credentials_path, 
             scopes=['https://www.googleapis.com/auth/spreadsheets.readonly']
-         )
+        )
         self.service = build('sheets', 'v4', credentials=self.creds)
 
     def read_settings_tab(self):
@@ -34,8 +34,11 @@ class MultiSourceScraper:
 
     def get_transcript(self, video_id):
         try:
-            transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
-            text = " ".join([t['text'] for t in transcript_list])
+            # Corrected method to fetch transcripts
+            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+            # Try to find English transcript (manual or auto-generated)
+            transcript = transcript_list.find_transcript(['en'])
+            text = " ".join([t['text'] for t in transcript.fetch()])
             print(f"DEBUG: Successfully got transcript for {video_id} ({len(text)} chars)")
             return text
         except Exception as e:
@@ -44,11 +47,12 @@ class MultiSourceScraper:
 
     def extract_full_details(self, transcript, title):
         prompt = f"""
-        Analyze this YouTube transcript for a trading strategy.
+        You are an expert Quant Trader. Analyze this YouTube transcript for a trading strategy.
+        GOAL: Determine if this is a high-quality, profitable trading strategy.
+        EXTRACT: Strategy Name, Market Regime, Entry Rules, Exit Rules, Win Rate (%), CAGR (%), Max Drawdown (%), Sharpe Ratio.
         Title: {title}
         Transcript: {transcript[:7000]}
-        
-        Return a JSON object with: name, regime, entry, exit, win, cagr, drawdown, sharpe, quality_score, description.
+        Return ONLY a JSON object with keys: name, regime, entry, exit, win, cagr, drawdown, sharpe, quality_score, description.
         If a value is unknown, use "Not mentioned".
         """
         try:
@@ -68,6 +72,7 @@ class MultiSourceScraper:
     def scrape_youtube(self, api_key):
         youtube = build('youtube', 'v3', developerKey=api_key)
         results = []
+        # Use the correct key from your Google Sheet
         keywords = self.criteria.get('YouTube Keywords', 'trading strategy')
         
         for query in keywords.split(','):
@@ -75,8 +80,6 @@ class MultiSourceScraper:
             print(f"DEBUG: Searching YouTube for: '{clean_query}'")
             request = youtube.search().list(q=clean_query, part='snippet', maxResults=3, type='video')
             response = request.execute()
-            
-            print(f"DEBUG: Found {len(response.get('items', []))} videos for query '{clean_query}'")
             
             for item in response['items']:
                 video_id = item['id']['videoId']
@@ -91,9 +94,9 @@ class MultiSourceScraper:
                     details['link'] = f"https://youtube.com/watch?v={video_id}"
                     details['date'] = item['snippet']['publishedAt']
                     details['channel'] = item['snippet']['channelTitle']
-                    results.append(details )
+                    results.append(details)
         
-        print(f"DEBUG: Total strategies found across all queries: {len(results)}")
+        print(f"DEBUG: Total strategies found: {len(results)}")
         return results
 
     def run_all(self, youtube_api_key):
