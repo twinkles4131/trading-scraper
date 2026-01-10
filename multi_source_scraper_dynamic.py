@@ -13,12 +13,12 @@ app = Flask(__name__)
 class MultiSourceScraper:
     def __init__(self, criteria):
         self.criteria = criteria
-        # Modern OpenAI client initialization (no 'proxies' keyword)
+        # Modern OpenAI initialization (NO 'proxies' keyword)
         self.client = OpenAI(
             api_key=os.environ.get("OPENAI_API_KEY")
-            # If you ever need proxies, use:
-            # http_client=httpx.Client(proxies=os.environ.get("HTTP_PROXY"))
         )
+        # Debug: Confirm API key loaded
+        print("DEBUG: OpenAI client initialized with key:", bool(os.environ.get("OPENAI_API_KEY")))
 
     def get_transcript(self, video_id):
         try:
@@ -139,7 +139,7 @@ class MultiSourceScraper:
                     details = self.extract_full_details(content, title, 'Option Alpha')
                     if details:
                         details['link'] = link
-                        details['date'] = 'Unknown'  # Can add date parsing later if needed
+                        details['date'] = 'Unknown'
                         details['channel'] = 'Option Alpha'
                         details['source'] = 'Option Alpha'
                         if self.filter_strategy(details):
@@ -189,7 +189,7 @@ class MultiSourceScraper:
                     details = self.extract_full_details(content, title, 'QuantConnect')
                     if details:
                         details['link'] = link
-                        details['date'] = 'Unknown'  # Can add date parsing later
+                        details['date'] = 'Unknown'
                         details['channel'] = 'QuantConnect Forum'
                         details['source'] = 'QuantConnect'
                         if self.filter_strategy(details):
