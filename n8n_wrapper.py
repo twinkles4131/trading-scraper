@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from flask import Flask, request, jsonify
-import os, sys, json
+import os
+from multi_source_scraper_dynamic import MultiSourceScraper  # only this import needed now
 
 app = Flask(__name__)
 
@@ -10,30 +11,23 @@ def health():
 
 @app.route('/scrape', methods=['POST'])
 def scrape():
-    from multi_source_scraper_dynamic import DynamicCriteriaReader, MultiSourceScraper
-    
-    # Read the key from Render's environment
-    google_creds = os.environ.get('GOOGLE_CREDENTIALS_JSON')
-    
-    if not google_creds:
-        return jsonify({'status': 'error', 'message': 'GOOGLE_CREDENTIALS_JSON variable is missing in Render settings'}), 500
-
-    data = request.get_json(force=True)
-    youtube_api_key = data.get('youtube_api_key')
-    sheet_id = '1wWp9gLifWCeXKs3LHWW_IvtxtmkyPDcOekcYNs4wRPY'
-
-    # Create a temporary file for the credentials
-    with open('temp_key.json', 'w') as f:
-        f.write(google_creds)
-
     try:
-        reader = DynamicCriteriaReader(sheet_id, 'temp_key.json')
-        settings = reader.read_settings_tab()
-        criteria = reader.parse_criteria(settings)
+        data = request.get_json(force=True)
+        if not data:
+            return jsonify({'status': 'error', 'message': 'No JSON body received'}), 400
 
+        youtube_api_key = data.get('youtube_api_key')
+        criteria = data.get('criteria', {})
+
+        if not youtube_api_key:
+            return jsonify({'status': 'error', 'message': 'youtube_api_key is required'}), 400
+
+        print("DEBUG: Received criteria keys:", list(criteria.keys()))
+        print("DEBUG: YouTube Enabled:", criteria.get('YouTube Enabled'))
+        print("DEBUG: Keywords preview:", criteria.get('Keywords', '')[:100])
+
+        # Instantiate and run the scraper with the received criteria
         scraper = MultiSourceScraper(criteria)
-        
-        # UPDATED: This now triggers YouTube, Option Alpha, and QuantConnect based on your Sheet settings
         results = scraper.run_all(youtube_api_key)
 
         return jsonify({
@@ -41,11 +35,17 @@ def scrape():
             'total_strategies': len(results),
             'strategies': results
         })
+
     except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 500
-    finally:
-        if os.path.exists('temp_key.json'):
-            os.remove('temp_key.json')
+        import traceback
+        error_msg = traceback.format_exc()
+        print("CRITICAL ERROR in /scrape:", error_msg)
+        return jsonify({
+            'status': 'error',
+            'message': str(e),
+            'traceback': error_msg  # only for dev; remove in production if security concern
+        }), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
