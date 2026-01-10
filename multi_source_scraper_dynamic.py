@@ -11,7 +11,7 @@ class DynamicCriteriaReader:
         self.creds = service_account.Credentials.from_service_account_file(
             credentials_path, 
             scopes=['https://www.googleapis.com/auth/spreadsheets.readonly']
-        )
+         )
         self.service = build('sheets', 'v4', credentials=self.creds)
 
     def read_settings_tab(self):
@@ -34,11 +34,9 @@ class MultiSourceScraper:
 
     def get_transcript(self, video_id):
         try:
-            # Corrected method to fetch transcripts
-            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-            # Try to find English transcript (manual or auto-generated)
-            transcript = transcript_list.find_transcript(['en'])
-            text = " ".join([t['text'] for t in transcript.fetch()])
+            # This is the standard way to call the library
+            transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
+            text = " ".join([t['text'] for t in transcript_list])
             print(f"DEBUG: Successfully got transcript for {video_id} ({len(text)} chars)")
             return text
         except Exception as e:
@@ -72,7 +70,6 @@ class MultiSourceScraper:
     def scrape_youtube(self, api_key):
         youtube = build('youtube', 'v3', developerKey=api_key)
         results = []
-        # Use the correct key from your Google Sheet
         keywords = self.criteria.get('YouTube Keywords', 'trading strategy')
         
         for query in keywords.split(','):
@@ -94,10 +91,11 @@ class MultiSourceScraper:
                     details['link'] = f"https://youtube.com/watch?v={video_id}"
                     details['date'] = item['snippet']['publishedAt']
                     details['channel'] = item['snippet']['channelTitle']
-                    results.append(details)
+                    results.append(details )
         
         print(f"DEBUG: Total strategies found: {len(results)}")
         return results
 
     def run_all(self, youtube_api_key):
         return self.scrape_youtube(youtube_api_key)
+
