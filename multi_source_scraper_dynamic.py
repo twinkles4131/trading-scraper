@@ -14,9 +14,15 @@ class MultiSourceScraper:
     def __init__(self, criteria):
         self.criteria = criteria
         # Modern OpenAI initialization (NO 'proxies' keyword)
-        self.client = OpenAI(
-            api_key=os.environ.get("OPENAI_API_KEY")
-        )
+       import httpx  # Add this import at the top of the file if not already there
+
+self.client = OpenAI(
+    api_key=os.environ.get("OPENAI_API_KEY"),
+    http_client=httpx.Client(
+        timeout=60.0,  # Increase if API calls are slow
+        follow_redirects=True
+    )
+)
         # Debug: Confirm API key loaded
         print("DEBUG: OpenAI client initialized with key:", bool(os.environ.get("OPENAI_API_KEY")))
 
