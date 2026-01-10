@@ -16,8 +16,15 @@ class MultiSourceScraper:
         # Modern OpenAI initialization (NO 'proxies' keyword)
        import httpx  # Add this import at the top of the file if not already there
 
+import httpx  # Add this import at the top of the file if not already there
+
 self.client = OpenAI(
     api_key=os.environ.get("OPENAI_API_KEY"),
+    http_client=httpx.Client(
+        timeout=60.0,  # Increase if API calls are slow
+        follow_redirects=True
+    )
+)
     http_client=httpx.Client(
         timeout=60.0,  # Increase if API calls are slow
         follow_redirects=True
