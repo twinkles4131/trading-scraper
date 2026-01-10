@@ -32,7 +32,9 @@ def scrape():
         criteria = reader.parse_criteria(settings)
 
         scraper = MultiSourceScraper(criteria)
-        results = scraper.scrape_youtube(youtube_api_key)
+        
+        # UPDATED: This now triggers YouTube, Option Alpha, and QuantConnect based on your Sheet settings
+        results = scraper.run_all(youtube_api_key)
 
         return jsonify({
             'status': 'success',
