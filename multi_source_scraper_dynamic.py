@@ -1,6 +1,7 @@
 import os
 import json
 import traceback
+import httpx  # Required for explicit http_client
 from flask import Flask, request, jsonify
 from googleapiclient.discovery import build
 from youtube_transcript_api import YouTubeTranscriptApi
@@ -13,24 +14,15 @@ app = Flask(__name__)
 class MultiSourceScraper:
     def __init__(self, criteria):
         self.criteria = criteria
-        # Modern OpenAI initialization (NO 'proxies' keyword)
-       import httpx  # Add this import at the top of the file if not already there
-
-import httpx  # Add this import at the top of the file if not already there
-
-self.client = OpenAI(
-    api_key=os.environ.get("OPENAI_API_KEY"),
-    http_client=httpx.Client(
-        timeout=60.0,  # Increase if API calls are slow
-        follow_redirects=True
-    )
-)
-    http_client=httpx.Client(
-        timeout=60.0,  # Increase if API calls are slow
-        follow_redirects=True
-    )
-)
-        # Debug: Confirm API key loaded
+        # Modern OpenAI initialization with explicit httpx client (fixes internal wrapper issues)
+        self.client = OpenAI(
+            api_key=os.environ.get("OPENAI_API_KEY"),
+            http_client=httpx.Client(
+                timeout=60.0,          # seconds - increase if calls are slow
+                follow_redirects=True
+            )
+        )
+        # Debug confirmation
         print("DEBUG: OpenAI client initialized with key:", bool(os.environ.get("OPENAI_API_KEY")))
 
     def get_transcript(self, video_id):
