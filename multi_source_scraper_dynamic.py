@@ -1,7 +1,7 @@
 import os
 import json
 import traceback
-import httpx  # Required for explicit http_client
+import httpx  # For explicit http_client in OpenAI
 from flask import Flask, request, jsonify
 from googleapiclient.discovery import build
 from youtube_transcript_api import YouTubeTranscriptApi
@@ -18,7 +18,7 @@ class MultiSourceScraper:
         self.client = OpenAI(
             api_key=os.environ.get("OPENAI_API_KEY"),
             http_client=httpx.Client(
-                timeout=60.0,          # seconds - increase if calls are slow
+                timeout=60.0,  # seconds - increase if calls are slow
                 follow_redirects=True
             )
         )
