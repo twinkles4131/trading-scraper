@@ -1,11 +1,8 @@
-flask==3.0.3
-gunicorn==22.0.0          # for production serving on Render
-google-api-python-client==2.111.0
-google-auth==2.35.0
-google-auth-oauthlib==1.2.1
-google-auth-httplib2==0.2.0
-requests==2.32.3
-beautifulsoup4==4.12.3    # NEW: Required for Option Alpha & QuantConnect scraping
-youtube-transcript-api==0.6.2
-openai==1.40.0            # or latest stable, e.g. 1.50+ if you prefer
-httpx==0.27.2
+flask
+requests
+beautifulsoup4
+praw
+openai
+httpx
+python-dotenv
+gunicorn
